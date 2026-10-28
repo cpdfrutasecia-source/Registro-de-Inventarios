@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Frutas & Cia — Inventário</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f5f4f1; --surface: #ffffff; --surface-alt: #fafaf8;
+      --border: #e8e6e1; --border-strong: #d4d0c8;
+      --text-primary: #1a1916; --text-secondary: #6b6860; --text-muted: #9e9b95;
+      --accent: #2a9d8f; --accent-light: #e6f4f2; --accent-mid: #5bb5a8;
+      --green: #1a9e6b; --red: #e54c4c;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04);
+      --radius: 10px; --radius-sm: 6px; --radius-lg: 16px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text-primary); min-height: 100vh; }
+    nav { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 32px; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow-sm); }
+    .nav-logo { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; letter-spacing: -0.3px; }
+    .nav-logo-icon { width: 28px; height: 28px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 14px; font-weight: 700; }
+    .page { max-width: 1100px; margin: 0 auto; padding: 32px 24px 120px; }
+    .page-title { font-size: 26px; font-weight: 600; letter-spacing: -0.6px; margin-bottom: 8px; }
+    .page-sub { color: var(--text-secondary); font-size: 14px; margin-bottom: 24px; }
+
+    .status-bar { background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 16px; margin-bottom: 16px; font-size: 12px; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+    .status-bar .btn-reload { background: none; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 4px 12px; cursor: pointer; font-size: 11px; color: var(--text-secondary); }
+    .status-bar .btn-reload:hover { background: var(--bg); border-color: var(--border-strong); }
+
+    /* Cabeçalho de sessão */
+    .session-header { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius-lg); padding: 20px 24px; margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px 24px; box-shadow: var(--shadow-sm); }
+    .header-field { display: flex; flex-direction: column; gap: 4px; }
+    .header-field label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); }
+    .header-field input, .header-field select { padding: 8px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--text-primary); background: var(--surface); outline: none; transition: 0.15s; width: 100%; }
+    .header-field input:focus, .header-field select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(42,157,143,0.15); }
+    .header-field input.erro, .header-field select.erro { border-color: var(--red); background: #fef5f5; }
+    .header-field .id-field { font-weight: 600; color: var(--accent); background: var(--accent-light); }
+
+    /* Busca */
+    .search-bar { margin-bottom: 12px; position: relative; }
+    .search-bar .search-icon { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 14px; pointer-events: none; }
+    .search-bar input { width: 100%; padding: 10px 14px 10px 38px; border: 1.5px solid var(--border); border-radius: var(--radius); font-family: 'DM Sans', sans-serif; font-size: 14px; background: var(--surface); outline: none; }
+    .search-bar input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(42,157,143,0.12); }
+    .autocomplete-suggestions { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius-sm); max-height: 200px; overflow-y: auto; z-index: 100; display: none; box-shadow: var(--shadow-md); }
+    .autocomplete-suggestions.show { display: block; }
+    .autocomplete-suggestions .suggestion { padding: 8px 12px; cursor: pointer; font-size: 13px; border-bottom: 1px solid var(--border); }
+    .autocomplete-suggestions .suggestion:hover { background: var(--accent-light); }
+    .autocomplete-suggestions .suggestion.inativo { background: #fff7e6; }
+
+    /* Formulário de adição */
+    .add-product { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius-lg); padding: 18px 24px; margin-bottom: 24px; display: flex; align-items: end; gap: 14px; flex-wrap: wrap; box-shadow: var(--shadow-sm); }
+    .add-field { display: flex; flex-direction: column; gap: 4px; flex: 1 0 100px; }
+    .add-field label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); }
+    .add-field input, .add-field select { padding: 8px 10px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 13.5px; color: var(--text-primary); background: var(--surface); outline: none; width: 100%; }
+    .add-field input:focus, .add-field select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(42,157,143,0.12); }
+    .add-field input[readonly] { background: #f5f4f1; }
+    .add-field input[type="number"] { width: 90px; }
+    .add-field.busca { flex: 1.2; }
+    .add-field.descricao { flex: 2.5; }
+    .add-field.sku { flex: 0.8; }
+    .add-field.fator { flex: 1; }
+    .add-field.qtd { flex: 0.6; }
+    .add-field.total { flex: 0.7; }
+    .add-field.total input { font-weight: 600; color: var(--accent); }
+    .add-field.fator input[type="number"] { width: 90px; opacity: 0.65; transition: opacity 0.2s; }
+    .add-field.fator input[type="number"].ativo { opacity: 1; font-weight: 600; }
+    .fator-toggle { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-secondary); white-space: nowrap; margin-top: 4px; cursor: pointer; user-select: none; }
+    .fator-toggle input[type="checkbox"] { width: 15px; height: 15px; cursor: pointer; accent-color: var(--accent); flex-shrink: 0; }
+    .fator-toggle label { cursor: pointer; }
+
+    .btn-scan-row { flex: 1 0 100%; padding: 12px 16px; background: var(--accent-light); color: var(--accent); border: 1.5px solid var(--accent); border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.15s; }
+    .btn-scan-row:hover { background: var(--accent); color: white; }
+    .btn-add { padding: 8px 20px; background: var(--accent); color: white; border: none; border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 13.5px; font-weight: 500; cursor: pointer; height: 40px; margin-bottom: 1px; transition: 0.18s; }
+    .btn-add:hover { background: #1f8a7d; transform: translateY(-1px); }
+
+    /* Painéis */
+    .inventario-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 16px; align-items: start; }
+    @media (max-width: 700px) { .inventario-panel { grid-template-columns: 1fr; } }
+    .panel-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden; }
+    .panel-header { padding: 12px 20px; background: var(--surface-alt); border-bottom: 1px solid var(--border); font-weight: 600; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
+    .panel-header .badge { background: var(--accent-light); color: var(--accent); padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .panel-body { padding: 8px 0; max-height: 420px; overflow-y: auto; }
+    .item-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 20px; border-bottom: 1px solid var(--border); font-size: 13px; gap: 10px; }
+    .item-row:last-child { border-bottom: none; }
+    .item-row .desc { flex: 1; min-width: 0; }
+    .item-row .sku { color: var(--text-muted); font-size: 11px; margin-right: 8px; font-family: 'DM Mono', monospace; }
+    .item-row .qtd { font-weight: 600; color: var(--accent); white-space: nowrap; font-size: 12.5px; }
+    .item-row .qtd small { color: var(--text-muted); font-weight: 400; display: block; text-align: right; }
+    .empty-msg { padding: 24px; text-align: center; color: var(--text-muted); font-size: 13px; }
+    .btn-remove { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; padding: 0 4px; transition: 0.15s; }
+    .btn-remove:hover { color: var(--red); }
+
+    .resumo-bar { display: flex; justify-content: flex-end; gap: 32px; padding: 12px 20px; background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius); font-size: 13.5px; margin-bottom: 24px; }
+    .resumo-bar strong { color: var(--accent); }
+    .resumo-bar .total-un { color: var(--accent); font-weight: 700; }
+
+    .footer-actions { position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 14px 32px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 -4px 20px rgba(0,0,0,0.06); z-index: 50; }
+    .btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 20px; border-radius: var(--radius); font-family: 'DM Sans', sans-serif; font-size: 13.5px; font-weight: 500; cursor: pointer; border: none; transition: 0.18s; }
+    .btn-ghost { background: transparent; color: var(--text-secondary); border: 1.5px solid var(--border); }
+    .btn-ghost:hover { border-color: var(--border-strong); color: var(--text-primary); background: var(--bg); }
+    .btn-success { background: var(--green); color: white; box-shadow: 0 2px 8px rgba(26,158,107,0.25); }
+    .btn-success:hover { background: #15885b; transform: translateY(-1px); }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: #1f8a7d; }
+
+    .toast { position: fixed; top: 72px; right: 24px; background: var(--text-primary); color: white; padding: 11px 18px; border-radius: var(--radius); font-size: 13.5px; font-weight: 500; box-shadow: var(--shadow-md); opacity: 0; transform: translateY(-8px); transition: 0.25s; pointer-events: none; z-index: 200; max-width: 320px; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    .progress-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1100; padding: 20px; }
+    .progress-overlay.show { display: flex; }
+    .progress-box { background: var(--surface); border-radius: var(--radius-lg); padding: 24px 28px; width: 100%; max-width: 360px; text-align: center; box-shadow: var(--shadow-md); }
+    .progress-spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; margin: 0 auto 16px; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .progress-title { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+    .progress-text { font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; min-height: 18px; }
+    .progress-bar-track { height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s; border-radius: 99px; }
+
+    .scanner-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: none; align-items: center; justify-content: center; z-index: 1200; padding: 16px; }
+    .scanner-modal.show { display: flex; }
+    .scanner-box { background: #000; border-radius: var(--radius-lg); width: 100%; max-width: 500px; overflow: hidden; position: relative; }
+    .scanner-video { width: 100%; height: auto; display: block; background: #000; max-height: 70vh; object-fit: cover; }
+    .scanner-close { position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.5); color: white; border: none; border-radius: 50%; width: 40px; height: 40px; font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 2; }
+    .scanner-close:hover { background: rgba(229,76,76,0.9); }
+
+    .planilha-link-wrapper { margin-top: 32px; display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+    .planilha-link { display: inline-flex; align-items: center; gap: 8px; padding: 10px 24px; background: var(--surface); color: var(--text-secondary); border: 1.5px solid var(--border); border-radius: var(--radius); font-family: 'DM Sans', sans-serif; font-size: 13.5px; font-weight: 500; text-decoration: none; transition: 0.18s; }
+    .planilha-link:hover { border-color: var(--border-strong); color: var(--text-primary); background: var(--bg); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+
+    @media (max-width: 800px) {
+      .session-header { grid-template-columns: 1fr 1fr; gap: 14px; }
+      .session-header .header-field.obs { grid-column: 1 / -1; }
+      .add-product { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; padding: 18px 16px; }
+      .add-field { flex: initial; width: 100%; }
+      .add-field input, .add-field select { padding: 12px; font-size: 15px; }
+      .add-field input[type="number"] { width: 100%; }
+      .add-field.busca, .add-field.descricao, .add-field.sku, .btn-scan-row, .add-field.fator, .btn-add { grid-column: 1 / -1; }
+      .add-field.qtd, .add-field.total { grid-column: span 1; }
+      .add-field.fator input[type="number"] { max-width: 180px; }
+      .btn-add { width: 100%; height: 44px; font-size: 14.5px; }
+      .btn-scan-row { padding: 14px 16px; font-size: 15px; }
+      .footer-actions { flex-direction: column; gap: 8px; padding: 12px 16px; }
+      nav { padding: 0 16px; }
+      .resumo-bar { justify-content: space-between; gap: 8px; }
+    }
+    @media (max-width: 480px) { .session-header { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo"><div class="nav-logo-icon">🍇</div>Frutas & Cia</div>
+</nav>
+
+<div class="page">
+  <h1 class="page-title">Inventário</h1>
+  <div class="page-sub">Preencha os dados da sessão, busque o produto, informe quantidade e fator de embalagem se aplicável. Você pode registrar o mesmo item várias vezes.</div>
+
+  <div class="status-bar" id="statusBar">
+    <span id="statusTexto">🔄 Carregando catálogo...</span>
+    <button class="btn-reload" onclick="recarregarCatalogo()">⟳ Recarregar</button>
+  </div>
+
+  <!-- Cabeçalho: ID, Operador, Loja, Data/Hora, Observação -->
+  <div class="session-header">
+    <div class="header-field">
+      <label>ID do Inventário</label>
+      <input type="text" id="idInventario" class="id-field" readonly>
+    </div>
+    <div class="header-field">
+      <label>Operador *</label>
+      <input type="text" id="operador" placeholder="Nome do operador">
+    </div>
+    <div class="header-field">
+      <label>Loja *</label>
+      <select id="loja">
+        <option value="">Selecione...</option>
+        <option value="Loja 1">Loja 1</option>
+        <option value="Loja 2">Loja 2</option>
+      </select>
+    </div>
+    <div class="header-field">
+      <label>Data / Hora</label>
+      <input type="text" id="dataHora" placeholder="dd/mm/aaaa hh:mm">
+    </div>
+    <div class="header-field obs" style="grid-column: span 2;">
+      <label>Observação</label>
+      <input type="text" id="observacao" placeholder="Opcional">
+    </div>
+  </div>
+
+  <!-- Busca -->
+  <div class="search-bar">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="pesquisaProduto" placeholder="Buscar produto por código ou descrição (ex: 'avocado' ou '14')" autocomplete="off">
+    <div class="autocomplete-suggestions" id="suggestionsPesquisa"></div>
+  </div>
+
+  <!-- Adicionar produto -->
+  <div class="add-product">
+    <div class="add-field busca">
+      <label>Cód. Barras</label>
+      <input type="text" id="codigoProd" placeholder="Código">
+    </div>
+    <div class="add-field descricao">
+      <label>Descrição</label>
+      <input type="text" id="descProd" placeholder="Produto" readonly>
+    </div>
+    <button class="btn-scan-row" id="btnEscanear" title="Escanear código de barras">📷 Escanear código de barras</button>
+    <div class="add-field sku">
+      <label>SKU</label>
+      <input type="text" id="skuProd" placeholder="SKU" readonly>
+    </div>
+    <div class="add-field fator">
+      <label>Fator Emb.</label>
+      <input type="number" id="fatorProd" value="1" min="0" step="0.01" title="Qtd de unidades por caixa/fardo">
+      <div class="fator-toggle">
+        <input type="checkbox" id="usarFatorCatalogo" onchange="toggleFatorInput()">
+        <label for="usarFatorCatalogo">Usar fator do catálogo</label>
+      </div>
+    </div>
+    <div class="add-field qtd">
+      <label>Qtd</label>
+      <input type="number" id="qtdProd" min="0" step="0.01" placeholder="Qtd">
+    </div>
+    <div class="add-field total">
+      <label>Total UN</label>
+      <input type="text" id="totalCalc" readonly>
+    </div>
+    <button class="btn-add" onclick="adicionarItem()">Adicionar →</button>
+  </div>
+
+  <!-- Painéis -->
+  <div class="inventario-panel">
+    <div class="panel-card">
+      <div class="panel-header">🕒 Últimos 3 itens <span class="badge" id="badgeUltimos">0</span></div>
+      <div class="panel-body" id="ultimosItens">
+        <div class="empty-msg">Nenhum item contado ainda.</div>
+      </div>
+    </div>
+    <div class="panel-card">
+      <div class="panel-header">📋 Todos os itens (A–Z) <span class="badge" id="badgeTotal">0</span></div>
+      <div class="panel-body" id="listaAlfabetica">
+        <div class="empty-msg">Nenhum item registrado.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="resumo-bar">
+    <span>Itens: <strong id="resumoItens">0</strong></span>
+    <span>Total UN: <span class="total-un" id="resumoTotal">0</span></span>
+  </div>
+
+  <!-- Links das planilhas -->
+  <div class="planilha-link-wrapper">
+    <a class="planilha-link"
+       href="https://docs.google.com/spreadsheets/d/1ylHx8XCnCPlJIf3YuklDYZhWWdlZn63vIXyo1h8JK3o/edit?gid=0#gid=0"
+       target="_blank" rel="noopener noreferrer"
+       title="Abrir planilha de inventário">
+      📊 Planilha de inventário
+    </a>
+    <a class="planilha-link"
+       href="https://docs.google.com/spreadsheets/d/15MDwFquCAJIvM2pFr-WozERjTGRnpIkK7Y_Zw4LXPrk/edit?gid=0#gid=0"
+       target="_blank" rel="noopener noreferrer"
+       title="Acessar cadastro de produtos">
+      📋 Cadastro de produtos
+    </a>
+  </div>
+</div>
+
+<div class="toast" id="toast">✓ Item adicionado</div>
+
+<!-- Scanner -->
+<div class="scanner-modal" id="scannerModal">
+  <div class="scanner-box">
+    <video class="scanner-video" id="scannerVideo" autoplay playsinline muted></video>
+    <button class="scanner-close" onclick="fecharScanner()">×</button>
+  </div>
+</div>
+
+<!-- Progresso -->
+<div class="progress-overlay" id="progressOverlay">
+  <div class="progress-box">
+    <div class="progress-spinner"></div>
+    <div class="progress-title">Enviando para a planilha...</div>
+    <div class="progress-text" id="progressText">Preparando...</div>
+    <div class="progress-bar-track"><div class="progress-bar-fill" id="progressBarFill"></div></div>
+  </div>
+</div>
+
+<div class="footer-actions">
+  <button class="btn btn-ghost" onclick="limparInventario()">🗑️ Limpar tudo</button>
+  <button class="btn btn-success" onclick="finalizarInventario()">✓ Finalizar e enviar</button>
+</div>
+
+<script>
+  // ============================================================
+  // CONFIGURAÇÃO
+  // ============================================================
+  const URL_CSV_CATALOGO = 'https://docs.google.com/spreadsheets/d/15MDwFquCAJIvM2pFr-WozERjTGRnpIkK7Y_Zw4LXPrk/export?format=csv&gid=0';
+  const URL_SCRIPT_INVENTARIO = AKfycbyFPKY99t65W5wCtIWQwcyILWNCdxgFvA5T_5su52Ks8Llr3N7nWrrwc3wBnI0cL_-X'COLE_AQUI_A_URL_DO_SEU_WEB_APP'; // ex: https://script.google.com/macros/s/AKfy.../exec
+
+  // ============================================================
+  // Parser CSV
+  // ============================================================
+  function parseCSV(texto) {
+    const rows = []; let row = []; let field = ''; let inQuotes = false; let i = 0;
+    while (i < texto.length) {
+      const c = texto[i];
+      if (inQuotes) {
+        if (c === '"') { if (texto[i+1] === '"') { field += '"'; i += 2; } else { inQuotes = false; i++; } }
+        else { field += c; i++; }
+      } else {
+        if (c === '"') { inQuotes = true; i++; }
+        else if (c === ',' || c === ';') { row.push(field); field = ''; i++; }
+        else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; i++; }
+        else if (c === '\r') { i++; }
+        else { field += c; i++; }
+      }
+    }
+    if (field !== '' || row.length > 0) { row.push(field); rows.push(row); }
+    return rows.filter(r => r.length > 1 || (r.length === 1 && r[0].trim() !== ''));
+  }
+
+  // ============================================================
+  // Estado
+  // ============================================================
+  let catalogo = [];
+  let itens = [];                 // { sku, codbarra, descricao, quantidade, fator, totalUnidades }
+  let idInventario = '';
+  let barcodeDetector = null;
+  let scannerAtivo = false;
+
+  const catalogoFallback = [
+    { sku: '1', codbarra: '1', descricao: 'ABACATE AVOCADO KG', unidade: 'KG', fator: 1, ativo: true },
+    { sku: '2', codbarra: '2', descricao: 'ABACATE BREDA KG', unidade: 'KG', fator: 1, ativo: true }
+  ];
+
+  // ============================================================
+  // Helpers numéricos
+  // ============================================================
+  function paraNumero(v) {
+    if (v === null || v === undefined || v === '') return 0;
+    if (typeof v === 'number') return isNaN(v) ? 0 : v;
+    const n = parseFloat(String(v).trim().replace(',', '.'));
+    return isNaN(n) ? 0 : n;
+  }
+  function formatarNumero(n) {
+    const num = paraNumero(n);
+    if (Number.isInteger(num)) return String(num);
+    return num.toFixed(3).replace(/\.?0+$/, '');
+  }
+  function escHtml(t) {
+    if (!t) return '';
+    const m = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+    return String(t).replace(/[&<>"']/g, c => m[c]);
+  }
+
+  // ============================================================
+  // ID sequencial por sessão
+  // ============================================================
+  function gerarIdInventario() {
+    const ultimo = parseInt(localStorage.getItem('frutas_cia_inv_ultimo_id') || '0', 10) || 0;
+    return 'INV-' + String(ultimo + 1).padStart(4, '0');
+  }
+  function inicializarId() {
+    idInventario = gerarIdInventario();
+    document.getElementById('idInventario').value = idInventario;
+  }
+  function salvarIdAtual() {
+    const n = parseInt(idInventario.replace(/\D/g, ''), 10);
+    if (!isNaN(n)) localStorage.setItem('frutas_cia_inv_ultimo_id', String(n));
+  }
+
+  // ============================================================
+  // Data/hora automática
+  // ============================================================
+  function preencherDataHora() {
+    const now = new Date();
+    const dia = String(now.getDate()).padStart(2, '0');
+    const mes = String(now.getMonth() + 1).padStart(2, '0');
+    const ano = now.getFullYear();
+    const h = String(now.getHours()).padStart(2, '0');
+    const m = String(now.getMinutes()).padStart(2, '0');
+    const campo = document.getElementById('dataHora');
+    if (!campo.value) campo.value = `${dia}/${mes}/${ano} ${h}:${m}`;
+  }
+
+  // ============================================================
+  // Carregar catálogo
+  // ============================================================
+  async function carregarCatalogo() {
+    const statusTexto = document.getElementById('statusTexto');
+    try {
+      statusTexto.textContent = '🔄 Baixando catálogo...';
+      const resp = await fetch(URL_CSV_CATALOGO);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const rows = parseCSV(await resp.text());
+      if (rows.length < 2) throw new Error('CSV vazio');
+
+      const cab = rows[0].map(c => c.trim());
+      const idx = {
+        codigo: cab.findIndex(c => /codigo|código/i.test(c)),
+        codbarra: cab.findIndex(c => /codbarra|codbarr/i.test(c)),
+        descricao: cab.findIndex(c => /descricao|descrição/i.test(c)),
+        unidade: cab.findIndex(c => /unidade|un/i.test(c)),
+        fator: cab.findIndex(c => /fatorcx|fator/i.test(c)),
+        ativo: cab.findIndex(c => /ativo/i.test(c))
+      };
+      if (idx.codigo === -1) idx.codigo = 0;
+      if (idx.codbarra === -1) idx.codbarra = 1;
+      if (idx.descricao === -1) idx.descricao = 2;
+      if (idx.unidade === -1) idx.unidade = 3;
+      if (idx.fator === -1) idx.fator = 4;
+      if (idx.ativo === -1) idx.ativo = 6;
+
+      const carregado = [];
+      for (let i = 1; i < rows.length; i++) {
+        const col = rows[i].map(c => c.trim());
+        if (col.length <= Math.max(idx.codigo, idx.codbarra, idx.descricao)) continue;
+        const codbarra = col[idx.codbarra] || '';
+        if (codbarra === '' || codbarra.toUpperCase() === 'SEM GTIN') continue;
+        let ativo = true;
+        if (idx.ativo !== -1 && col[idx.ativo] !== undefined) {
+          const v = String(col[idx.ativo]).trim().toUpperCase();
+          if (['N','NAO','NÃO','0','INATIVO','FALSE','INATIVA'].includes(v)) ativo = false;
+        }
+        carregado.push({
+          sku: col[idx.codigo] || '',
+          codbarra: codbarra,
+          descricao: col[idx.descricao] || '',
+          unidade: col[idx.unidade] || 'UN',
+          fator: parseFloat(col[idx.fator]) || 1,
+          ativo: ativo
+        });
+      }
+      if (carregado.length === 0) throw new Error('Nenhum produto válido');
+      catalogo = carregado;
+      const ativos = catalogo.filter(p => p.ativo).length;
+      statusTexto.innerHTML = `✅ Catálogo: <strong>${catalogo.length}</strong> produtos (${ativos} ativos)`;
+    } catch (err) {
+      console.error(err);
+      catalogo = catalogoFallback;
+      statusTexto.innerHTML = `⚠️ Usando catálogo de fallback: <strong>${catalogo.length}</strong> produtos (${err.message})`;
+    }
+  }
+  async function recarregarCatalogo() {
+    await carregarCatalogo();
+    showToast('🔄 Catálogo recarregado!');
+  }
+
+  // ============================================================
+  // Referências DOM
+  // ============================================================
+  const codigoInput = document.getElementById('codigoProd');
+  const skuInput = document.getElementById('skuProd');
+  const descInput = document.getElementById('descProd');
+  const fatorInput = document.getElementById('fatorProd');
+  const qtdInput = document.getElementById('qtdProd');
+  const totalCalc = document.getElementById('totalCalc');
+  const usarFatorCheck = document.getElementById('usarFatorCatalogo');
+  const pesquisaInput = document.getElementById('pesquisaProduto');
+  const suggestionsPesquisa = document.getElementById('suggestionsPesquisa');
+  const btnEscanear = document.getElementById('btnEscanear');
+  const scannerModal = document.getElementById('scannerModal');
+  const scannerVideo = document.getElementById('scannerVideo');
+
+  // ============================================================
+  // Fator: toggle + cálculo de Total UN
+  // ============================================================
+  function toggleFatorInput() {
+    if (usarFatorCheck.checked) fatorInput.classList.add('ativo');
+    else fatorInput.classList.remove('ativo');
+    atualizarTotalCalc();
+  }
+  function atualizarTotalCalc() {
+    const qtdStr = qtdInput.value;
+    if (qtdStr === '' || qtdStr === null) { totalCalc.value = ''; return; }
+    const qtd = paraNumero(qtdStr);
+    const fator = usarFatorCheck.checked ? (paraNumero(fatorInput.value) || 1) : 1;
+    totalCalc.value = formatarNumero(qtd * fator);
+  }
+  qtdInput.addEventListener('input', atualizarTotalCalc);
+  fatorInput.addEventListener('input', atualizarTotalCalc);
+
+  // ============================================================
+  // Preencher campos a partir do catálogo
+  // ============================================================
+  function preencherCampos(produto) {
+    if (!produto) return;
+    codigoInput.value = produto.codbarra;
+    skuInput.value = produto.sku;
+    descInput.value = produto.descricao;
+    fatorInput.value = produto.fator || 1;
+    atualizarTotalCalc();
+  }
+
+  codigoInput.addEventListener('blur', function() {
+    const cod = this.value.trim();
+    if (!cod) { skuInput.value = ''; descInput.value = ''; fatorInput.value = '1'; atualizarTotalCalc(); return; }
+    const prod = catalogo.find(p => p.codbarra === cod);
+    if (prod) {
+      preencherCampos(prod);
+      showToast(prod.ativo ? 'Produto encontrado' : '⚠️ Produto inativo');
+      qtdInput.focus();
+    }
+  });
+  codigoInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); this.blur(); } });
+
+  // ============================================================
+  // Autocomplete
+  // ============================================================
+  function matchesQuery(produto, query) {
+    const words = query.trim().toLowerCase().split(/\s+/).filter(w => w);
+    const text = (produto.descricao + ' ' + produto.codbarra).toLowerCase();
+    return words.every(w => text.includes(w));
+  }
+
+  pesquisaInput.addEventListener('input', function() {
+    const q = this.value.trim();
+    if (!q) { suggestionsPesquisa.classList.remove('show'); return; }
+    const matches = catalogo.filter(p => matchesQuery(p, q)).slice(0, 10);
+    if (matches.length) {
+      suggestionsPesquisa.innerHTML = matches.map(p => {
+        const cls = p.ativo ? '' : ' inativo';
+        return `<div class="suggestion${cls}" data-codbarra="${p.codbarra}"><strong>${p.codbarra}</strong> — ${escHtml(p.descricao)}${!p.ativo ? ' (inativo)' : ''}</div>`;
+      }).join('');
+      suggestionsPesquisa.classList.add('show');
+    } else {
+      suggestionsPesquisa.classList.remove('show');
+    }
+  });
+
+  suggestionsPesquisa.addEventListener('click', function(e) {
+    const el = e.target.closest('.suggestion');
+    if (!el) return;
+    const prod = catalogo.find(p => p.codbarra === el.dataset.codbarra);
+    if (prod) preencherCampos(prod);
+    pesquisaInput.value = '';
+    suggestionsPesquisa.classList.remove('show');
+    qtdInput.focus();
+  });
+
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.search-bar')) suggestionsPesquisa.classList.remove('show');
+  });
+
+  // ============================================================
+  // Adicionar item
+  // ============================================================
+  function adicionarItem() {
+    const desc = descInput.value.trim();
+    const qtd = paraNumero(qtdInput.value);
+    const fator = usarFatorCheck.checked ? (paraNumero(fatorInput.value) || 1) : 1;
+
+    if (!desc) { showToast('⚠️ Selecione um produto primeiro'); return; }
+    if (qtd <= 0) { showToast('⚠️ Informe a quantidade'); qtdInput.focus(); return; }
+
+    itens.push({
+      sku: skuInput.value.trim() || '---',
+      codbarra: codigoInput.value.trim() || '---',
+      descricao: desc,
+      quantidade: qtd,
+      fator: fator,
+      totalUnidades: qtd * fator
+    });
+
+    // Limpar campos
+    codigoInput.value = ''; skuInput.value = ''; descInput.value = '';
+    fatorInput.value = '1'; qtdInput.value = '';
+    usarFatorCheck.checked = false; fatorInput.classList.remove('ativo');
+    atualizarTotalCalc();
+    codigoInput.focus();
+
+    renderizarPaineis();
+    showToast('✓ Item adicionado');
+  }
+
+  // ============================================================
+  // Remover
+  // ============================================================
+  function removerItem(index) {
+    itens.splice(index, 1);
+    renderizarPaineis();
+    showToast('Item removido');
+  }
+
+  // ============================================================
+  // Renderizar painéis + resumo
+  // ============================================================
+  function formatarItem(item) {
+    if (item.fator && item.fator !== 1) {
+      return `<span class="qtd">${formatarNumero(item.totalUnidades)} UN<small>${formatarNumero(item.quantidade)} × ${formatarNumero(item.fator)}</small></span>`;
+    }
+    return `<span class="qtd">${formatarNumero(item.quantidade)} UN</span>`;
+  }
+
+  function renderizarPaineis() {
+    const totalUn = itens.reduce((s, i) => s + i.totalUnidades, 0);
+    document.getElementById('resumoItens').textContent = itens.length;
+    document.getElementById('resumoTotal').textContent = formatarNumero(totalUn);
+
+    // Últimos 3
+    const divUltimos = document.getElementById('ultimosItens');
+    const badgeUltimos = document.getElementById('badgeUltimos');
+    const ultimos = itens.slice(-3).reverse();
+    if (ultimos.length === 0) {
+      divUltimos.innerHTML = '<div class="empty-msg">Nenhum item contado ainda.</div>';
+      badgeUltimos.textContent = '0';
+    } else {
+      divUltimos.innerHTML = ultimos.map((item, idx) => {
+        const realIndex = itens.length - 1 - idx;
+        return `<div class="item-row">
+          <span class="desc"><span class="sku">${escHtml(item.sku)}</span>${escHtml(item.descricao)}</span>
+          ${formatarItem(item)}
+          <button class="btn-remove" onclick="removerItem(${realIndex})" title="Remover">✕</button>
+        </div>`;
+      }).join('');
+      badgeUltimos.textContent = ultimos.length;
+    }
+
+    // Lista alfabética
+    const divLista = document.getElementById('listaAlfabetica');
+    const badgeTotal = document.getElementById('badgeTotal');
+    const ordenada = itens
+      .map((item, i) => ({ item, i }))
+      .sort((a, b) => a.item.descricao.localeCompare(b.item.descricao));
+    if (ordenada.length === 0) {
+      divLista.innerHTML = '<div class="empty-msg">Nenhum item registrado.</div>';
+      badgeTotal.textContent = '0';
+    } else {
+      divLista.innerHTML = ordenada.map(({ item, i }) => `
+        <div class="item-row">
+          <span class="desc"><span class="sku">${escHtml(item.sku)}</span>${escHtml(item.descricao)}</span>
+          ${formatarItem(item)}
+          <button class="btn-remove" onclick="removerItem(${i})" title="Remover">✕</button>
+        </div>
+      `).join('');
+      badgeTotal.textContent = ordenada.length;
+    }
+  }
+
+  // ============================================================
+  // Validação do cabeçalho
+  // ============================================================
+  function validarCabecalho(silencioso) {
+    const loja = document.getElementById('loja');
+    let ok = true;
+    if (!loja.value) { loja.classList.add('erro'); ok = false; } else loja.classList.remove('erro');
+    if (!ok && !silencioso) showToast('⚠️ Selecione a loja antes de continuar');
+    return ok;
+  }
+  document.getElementById('loja').addEventListener('change', function() { if (this.value) this.classList.remove('erro'); });
+
+  // ============================================================
+  // Limpar
+  // ============================================================
+  function limparInventario() {
+    if (itens.length === 0) { showToast('Já está vazio'); return; }
+    if (confirm('Tem certeza que deseja limpar todos os itens?')) {
+      itens = [];
+      renderizarPaineis();
+      showToast('Lista limpa');
+    }
+  }
+
+  // ============================================================
+  // Scanner
+  // ============================================================
+  async function iniciarScanner() {
+    if (!('BarcodeDetector' in window)) {
+      showToast('⚠️ Navegador sem suporte nativo. Digite manualmente.');
+      return;
+    }
+    scannerModal.classList.add('show');
+    scannerAtivo = true;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      scannerVideo.srcObject = stream;
+      if (!barcodeDetector) barcodeDetector = new BarcodeDetector({ formats: ['ean_13','ean_8','upc_a','upc_e','code_128'] });
+      detectarCodigo(stream);
+    } catch (err) {
+      showToast('❌ Não foi possível acessar a câmera.');
+      fecharScanner();
+    }
+  }
+  async function detectarCodigo(stream) {
+    if (!scannerAtivo) return;
+    try {
+      const barcodes = await barcodeDetector.detect(scannerVideo);
+      if (barcodes.length > 0) {
+        const codigo = barcodes[0].rawValue;
+        if (navigator.vibrate) navigator.vibrate(200);
+        codigoInput.value = codigo;
+        codigoInput.dispatchEvent(new Event('blur'));
+        fecharScanner(stream);
+        return;
+      }
+    } catch (err) { console.warn(err); }
+    if (scannerAtivo) requestAnimationFrame(() => detectarCodigo(stream));
+  }
+  function fecharScanner(stream) {
+    scannerAtivo = false;
+    scannerModal.classList.remove('show');
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    else if (scannerVideo.srcObject) {
+      scannerVideo.srcObject.getTracks().forEach(t => t.stop());
+      scannerVideo.srcObject = null;
+    }
+  }
+  btnEscanear.addEventListener('click', iniciarScanner);
+  scannerModal.addEventListener('click', function(e) { if (e.target === this) fecharScanner(); });
+
+  // ============================================================
+  // Toast
+  // ============================================================
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3200);
+  }
+
+  // ============================================================
+  // Enviar via Image (evita CORS)
+  // ============================================================
+  function enviarViaImagem(url) {
+    return new Promise(resolve => {
+      const img = new Image();
+      let concluido = false;
+      const fim = () => { if (!concluido) { concluido = true; resolve(); } };
+      img.onload = fim; img.onerror = fim;
+      img.src = url;
+      setTimeout(fim, 5000);
+    });
+  }
+
+  // ============================================================
+  // Finalizar e enviar
+  // ============================================================
+  async function finalizarInventario() {
+    if (!validarCabecalho(false)) return;
+    if (itens.length === 0) { showToast('⚠️ Adicione pelo menos um item'); return; }
+
+    let operador = document.getElementById('operador').value.trim();
+    if (!operador) {
+      operador = prompt('Digite o nome do operador (obrigatório):');
+      if (!operador) { showToast('⚠️ Operador é obrigatório'); return; }
+      document.getElementById('operador').value = operador;
+    }
+
+    const loja = document.getElementById('loja').value;
+    const dataHora = document.getElementById('dataHora').value.trim() || new Date().toLocaleString('pt-BR');
+    const observacao = document.getElementById('observacao').value.trim();
+
+    if (!confirm(`Enviar ${itens.length} item(ns) da sessão ${idInventario} para a planilha?`)) return;
+
+    const overlay = document.getElementById('progressOverlay');
+    const progressText = document.getElementById('progressText');
+    const progressBar = document.getElementById('progressBarFill');
+    overlay.classList.add('show');
+
+    let enviados = 0, erros = 0;
+    for (let i = 0; i < itens.length; i++) {
+      const item = itens[i];
+      progressText.textContent = `Item ${i + 1} de ${itens.length}: ${item.descricao.substring(0, 30)}`;
+      progressBar.style.width = `${((i + 1) / itens.length) * 100}%`;
+
+      // Payload com as 14 colunas
+      const dados = {
+        id: idInventario,
+        dataHora: dataHora,
+        tipo: 'INVENTÁRIO',
+        loja: loja,
+        totalUn: item.totalUnidades,
+        sku: item.sku,
+        codbarra: item.codbarra,
+        produto: item.descricao,
+        qtd: item.quantidade,
+        fator: item.fator,
+        obs: observacao,
+        operador: operador,
+        destino: '',              // preenchido manualmente depois, se necessário
+        lancamentoSistema: ''     // preenchido manualmente depois, se necessário
+      };
+
+      try {
+        const url = URL_SCRIPT_INVENTARIO + '?dados=' + encodeURIComponent(JSON.stringify(dados));
+        await enviarViaImagem(url);
+        enviados++;
+        await new Promise(r => setTimeout(r, 200));
+      } catch (err) {
+        console.error(`Erro no item ${i + 1}:`, err);
+        erros++;
+      }
+    }
+
+    overlay.classList.remove('show');
+    progressBar.style.width = '0%';
+
+    if (erros === 0) {
+      salvarIdAtual();
+      showToast(`✅ ${enviados} item(ns) enviados com sucesso!`);
+      itens = [];
+      renderizarPaineis();
+      inicializarId();          // próximo número de ID
+      preencherDataHora();      // nova data/hora
+      document.getElementById('observacao').value = '';
+    } else if (enviados > 0) {
+      showToast(`⚠️ ${enviados} enviado(s), ${erros} com erro.`);
+    } else {
+      showToast('❌ Não foi possível enviar. Verifique a URL do Web App.');
+    }
+  }
+
+  // ============================================================
+  // Enter para adicionar
+  // ============================================================
+  qtdInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); adicionarItem(); } });
+  fatorInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); adicionarItem(); } });
+
+  // ============================================================
+  // Init
+  // ============================================================
+  (async function init() {
+    await carregarCatalogo();
+    inicializarId();
+    preencherDataHora();
+    renderizarPaineis();
+    console.log(`✅ Inventário pronto | ID: ${idInventario} | Catálogo: ${catalogo.length}`);
+  })();
+</script>
+
+</body>
+</html>
