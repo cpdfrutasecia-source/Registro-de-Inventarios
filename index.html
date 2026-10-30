@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Frutas & Cia — Inventário</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Biblioteca para gerar a Foto -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <style>
     :root {
       --bg: #f5f4f1;
@@ -168,6 +170,22 @@
     .planilha-link { display: inline-flex; align-items: center; gap: 8px; padding: 10px 22px; background: var(--surface); color: var(--text-secondary); border: 1.5px solid var(--border); border-radius: var(--radius); font-size: 13.5px; font-weight: 500; text-decoration: none; transition: 0.18s; }
     .planilha-link:hover { border-color: var(--border-strong); color: var(--text-primary); background: var(--bg); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
 
+    /* MODAL DE COMPARTILHAR */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+    .modal-overlay.show { display: flex; }
+    .modal-box { background: var(--surface); border-radius: var(--radius-lg); width: 100%; max-width: 420px; box-shadow: var(--shadow-md); overflow: hidden; animation: modalIn 0.2s ease; }
+    @keyframes modalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    .modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .modal-header h3 { font-size: 16px; font-weight: 600; }
+    .modal-close { background: none; border: none; font-size: 24px; color: var(--text-muted); cursor: pointer; line-height: 1; padding: 0 4px; }
+    .modal-close:hover { color: var(--text-primary); }
+    .modal-body { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .share-option { display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; gap: 2px 14px; padding: 14px 16px; background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius); cursor: pointer; text-align: left; transition: 0.15s; font-family: 'DM Sans', sans-serif; }
+    .share-option:hover { border-color: var(--accent); background: var(--accent-light); transform: translateY(-1px); }
+    .share-icon { font-size: 24px; grid-row: span 2; align-self: center; }
+    .share-label { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+    .share-desc { font-size: 12px; color: var(--text-secondary); }
+
     @media (max-width: 800px) {
       .transfer-header { grid-template-columns: 1fr 1fr; }
       .header-field.full { grid-column: span 2; }
@@ -208,7 +226,7 @@
 
   <div class="page-header">
     <h1 class="page-title">Contagem de inventário</h1>
-    <div class="page-sub">Busque por código de barras ou descrição (qualquer ordem). Informe loja, operador e adicione os itens. O mesmo produto pode ser contado mais de uma vez — a consolidação é feita depois na planilha.</div>
+    <div class="page-sub">Busque por código de barras ou descrição. Informe loja, operador e adicione os itens. O mesmo produto pode ser contado mais de uma vez — a consolidação é feita na planilha.</div>
   </div>
 
   <div class="status-bar" id="statusBar">
@@ -341,21 +359,40 @@
   </div>
 
   <div class="planilha-link-wrapper">
-    <a class="planilha-link"
-       href="https://docs.google.com/spreadsheets/d/1ylHx8XCnCPlJIf3YuklDYZhWWdlZn63vIXyo1h8JK3o/edit?gid=0#gid=0"
-       target="_blank" rel="noopener noreferrer">
-      📊 Planilha de registro de inventário
-    </a>
-    <a class="planilha-link"
-       href="https://docs.google.com/spreadsheets/d/15MDwFquCAJIvM2pFr-WozERjTGRnpIkK7Y_Zw4LXPrk/edit?gid=0#gid=0"
-       target="_blank" rel="noopener noreferrer">
-      📋 Cadastro de produtos
-    </a>
+    <a class="planilha-link" href="https://docs.google.com/spreadsheets/d/1ylHx8XCnCPlJIf3YuklDYZhWWdlZn63vIXyo1h8JK3o/edit?gid=0#gid=0" target="_blank" rel="noopener noreferrer">📊 Planilha de registro de inventário</a>
+    <a class="planilha-link" href="https://docs.google.com/spreadsheets/d/15MDwFquCAJIvM2pFr-WozERjTGRnpIkK7Y_Zw4LXPrk/edit?gid=0#gid=0" target="_blank" rel="noopener noreferrer">📋 Cadastro de produtos</a>
   </div>
 
 </div>
 
 <div class="toast" id="toast">✓ Item adicionado</div>
+
+<!-- MODAL COMPARTILHAR -->
+<div class="modal-overlay" id="modalCompartilhar">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>Compartilhar inventário</h3>
+      <button class="modal-close" onclick="fecharModalCompartilhar()">×</button>
+    </div>
+    <div class="modal-body">
+      <button class="share-option" onclick="compartilharPDF()">
+        <span class="share-icon">📄</span>
+        <span class="share-label">PDF</span>
+        <span class="share-desc">Gera um arquivo PDF para salvar ou enviar</span>
+      </button>
+      <button class="share-option" onclick="compartilharFoto()">
+        <span class="share-icon">📷</span>
+        <span class="share-label">Foto</span>
+        <span class="share-desc">Gera uma imagem do cupom para compartilhar</span>
+      </button>
+      <button class="share-option" onclick="compartilharTexto()">
+        <span class="share-icon">📝</span>
+        <span class="share-label">Texto</span>
+        <span class="share-desc">Copia o resumo para colar no WhatsApp</span>
+      </button>
+    </div>
+  </div>
+</div>
 
 <div class="scanner-modal" id="scannerModal">
   <div class="scanner-box">
@@ -382,7 +419,8 @@
 <div class="footer-actions">
   <button class="btn btn-ghost" onclick="limparTudo()">🗑️ Limpar tudo</button>
   <div class="footer-right">
-    <button class="btn btn-secondary" onclick="imprimirInventario()" id="btnImprimir" disabled>🖨️ Imprimir</button>
+    <button class="btn btn-secondary" id="btnImprimir" onclick="imprimirInventario()" disabled>🖨️ Imprimir</button>
+    <button class="btn btn-secondary" id="btnCompartilhar" onclick="abrirModalCompartilhar()" disabled>📤 Compartilhar</button>
     <button class="btn btn-success" onclick="finalizarInventario()">✓ Finalizar inventário</button>
   </div>
 </div>
@@ -392,9 +430,7 @@
   // 0. Configuração
   // ============================================================
   const URL_CATALOGO = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQRhvQFKwwde7gCktDWXJJ-3G3eETE51T6JhptQr-9DqgADIKdvt7YpPQByY8ksRthvIMdNNhuRKuo2/pub?gid=0&single=true&output=csv';
-
-  // ⚠️ COLE AQUI A URL DO SEU APPS SCRIPT PUBLICADO
-  const URL_SCRIPT = 'https://script.google.com/macros/s/AKfycb.../exec';
+  const URL_SCRIPT = 'COLE_AQUI_A_URL_DO_SEU_APPS_SCRIPT'; // Substitua pela URL do seu Apps Script
 
   const STORAGE_ID_KEY = 'frutas_cia_inventario_ultimo_id';
   const STORAGE_DRAFT_KEY = 'frutas_cia_inventario_draft';
@@ -403,7 +439,7 @@
   // 1. Parser CSV robusto
   // ============================================================
   function parseCSV(texto) {
-    texto = texto.replace(/^\uFEFF/, ''); // remove BOM
+    texto = texto.replace(/^\uFEFF/, '');
     const rows = [];
     let row = [], field = '', inQuotes = false, i = 0;
     while (i < texto.length) {
@@ -483,6 +519,7 @@
   const dataHoraInput = document.getElementById('dataHora');
   const obsInput = document.getElementById('observacao');
   const btnImprimir = document.getElementById('btnImprimir');
+  const btnCompartilhar = document.getElementById('btnCompartilhar');
 
   // ============================================================
   // 5. ID sequencial
@@ -689,7 +726,6 @@
       ts: Date.now()
     });
 
-    // limpar campos do produto
     codigoInput.value = '';
     descInput.value = '';
     skuInput.value = '';
@@ -702,7 +738,7 @@
 
     renderTudo();
     salvarDraft();
-    habilitarImprimir();
+    habilitarAcoes();
     showToast('✓ Item adicionado');
   }
 
@@ -716,7 +752,7 @@
 
   function renderUltimos3() {
     const cont = document.getElementById('ultimos3Grid');
-    const ultimos = itens.slice(-3).reverse(); // mais recente primeiro
+    const ultimos = itens.slice(-3).reverse();
     let html = '';
     for (let i = 0; i < 3; i++) {
       if (i < ultimos.length) {
@@ -749,7 +785,6 @@
       return;
     }
 
-    // Ordenação alfabética (mantém duplicados)
     const ordenado = [...itens].sort((a, b) =>
       a.descricao.localeCompare(b.descricao, 'pt-BR', { sensitivity: 'base' })
     );
@@ -797,12 +832,14 @@
     itens.splice(idx, 1);
     renderTudo();
     salvarDraft();
-    if (!itens.length) btnImprimir.disabled = true;
+    habilitarAcoes();
     showToast('Item removido');
   }
 
-  function habilitarImprimir() {
-    btnImprimir.disabled = itens.length === 0;
+  function habilitarAcoes() {
+    const temItens = itens.length > 0;
+    btnImprimir.disabled = !temItens;
+    btnCompartilhar.disabled = !temItens;
   }
 
   // ============================================================
@@ -854,16 +891,13 @@
     } catch { return false; }
   }
 
-  // ============================================================
-  // 14. Persistir header a cada alteração
-  // ============================================================
   [operadorInput, lojaSelect, dataHoraInput, obsInput].forEach(el => {
     el.addEventListener('change', salvarDraft);
     el.addEventListener('blur', salvarDraft);
   });
 
   // ============================================================
-  // 15. Escanear código de barras
+  // 14. Escanear código de barras
   // ============================================================
   async function iniciarScanner() {
     if (!('BarcodeDetector' in window)) {
@@ -897,7 +931,7 @@
         fecharScanner(stream);
         return;
       }
-    } catch (err) { /* ignora */ }
+    } catch (err) { }
     if (scannerAtivo) requestAnimationFrame(() => detectarCodigo(stream));
   }
   function fecharScanner(stream) {
@@ -911,7 +945,7 @@
   scannerModal.addEventListener('click', e => { if (e.target === scannerModal) fecharScanner(); });
 
   // ============================================================
-  // 16. Envio ao Apps Script (via imagem p/ evitar CORS)
+  // 15. Envio ao Apps Script (via imagem p/ evitar CORS)
   // ============================================================
   function enviarViaImagem(url) {
     return new Promise(resolve => {
@@ -961,13 +995,9 @@
       const dados = {
         ...header,
         itens: lotes[l].map(it => ({
-          sku: it.sku,
-          codbarra: it.codbarra,
-          descricao: it.descricao,
-          quantidade: Number(it.quantidade),
-          fator: Number(it.fator),
-          unidade: it.unidade,
-          totalUnidades: Number(it.totalUnidades)
+          sku: it.sku, codbarra: it.codbarra, descricao: it.descricao,
+          quantidade: Number(it.quantidade), fator: Number(it.fator),
+          unidade: it.unidade, totalUnidades: Number(it.totalUnidades)
         }))
       };
       try {
@@ -982,13 +1012,13 @@
     }
     esconderProgresso();
 
-    if (erros === 0) { showToast(`✅ ${enviados} item(ns) registrado(s) na planilha`); return true; }
+    if (erros === 0) { showToast(`✅ ${enviados} item(ns) registrado(s)`); return true; }
     if (enviados > 0) { showToast(`⚠️ ${enviados} ok, ${erros} com erro`); return true; }
     showToast('❌ Falha ao enviar'); return false;
   }
 
   // ============================================================
-  // 17. Finalizar
+  // 16. Finalizar
   // ============================================================
   async function finalizarInventario() {
     if (!validarHeader()) return;
@@ -1000,18 +1030,12 @@
     }
 
     const totalUn = itens.reduce((s, it) => s + Number(it.totalUnidades || 0), 0);
-
-    // resumo
     let resumo = '📋 FRUTAS & CIA — INVENTÁRIO\n';
     resumo += '═'.repeat(46) + '\n';
-    resumo += `ID: ${idInput.value}\n`;
-    resumo += `Loja: ${lojaSelect.value}\n`;
-    resumo += `Operador: ${operadorInput.value}\n`;
-    resumo += `Data/Hora: ${dataHoraInput.value}\n`;
+    resumo += `ID: ${idInput.value}\nLoja: ${lojaSelect.value}\nOperador: ${operadorInput.value}\nData/Hora: ${dataHoraInput.value}\n`;
     if (obsInput.value.trim()) resumo += `Obs: ${obsInput.value.trim()}\n`;
     resumo += '─'.repeat(46) + '\n';
-    resumo += `Total de itens: ${itens.length}\n`;
-    resumo += `Total de unidades: ${formatarNumero(totalUn)}\n`;
+    resumo += `Total de itens: ${itens.length}\nTotal de unidades: ${formatarNumero(totalUn)}\n`;
     resumo += '═'.repeat(46);
     alert(resumo);
 
@@ -1019,33 +1043,44 @@
     localStorage.removeItem(STORAGE_DRAFT_KEY);
     itens = [];
     renderTudo();
-    btnImprimir.disabled = true;
+    habilitarAcoes();
     novoId();
     salvarDraft();
     showToast('✅ Inventário finalizado');
   }
 
   // ============================================================
-  // 18. Limpar
+  // 17. Limpar
   // ============================================================
   function limparTudo() {
     if (!itens.length) { showToast('Já está vazio'); return; }
     if (!confirm('Tem certeza que deseja limpar todos os itens?')) return;
     itens = [];
     renderTudo();
-    btnImprimir.disabled = true;
+    habilitarAcoes();
     localStorage.removeItem(STORAGE_DRAFT_KEY);
     salvarDraft();
     showToast('Lista limpa');
   }
 
   // ============================================================
-  // 19. Imprimir
+  // 18. COMPARTILHAR (Novas funções integradas)
   // ============================================================
-  function imprimirInventario() {
-    if (!itens.length) { showToast('⚠️ Nenhum item para imprimir'); return; }
+  function abrirModalCompartilhar() {
     if (!validarHeader()) return;
+    if (itens.length === 0) { showToast('⚠️ Adicione itens antes de compartilhar'); return; }
+    document.getElementById('modalCompartilhar').classList.add('show');
+  }
 
+  function fecharModalCompartilhar() { 
+    document.getElementById('modalCompartilhar').classList.remove('show'); 
+  }
+
+  document.getElementById('modalCompartilhar').addEventListener('click', function(e) { 
+    if (e.target === this) fecharModalCompartilhar(); 
+  });
+
+  function gerarCupomHTML() {
     const ordenado = [...itens].sort((a, b) =>
       a.descricao.localeCompare(b.descricao, 'pt-BR', { sensitivity: 'base' })
     );
@@ -1062,34 +1097,140 @@
         <td style="text-align:right;font-weight:700;">${formatarNumero(it.totalUnidades)}</td>
       </tr>`).join('');
 
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Inventário ${idInput.value}</title><style>
+    return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Inventário ${idInput.value}</title><style>
       @page { size: A4 portrait; margin: 10mm; }
-      body { font-family: Arial, sans-serif; font-size: 11px; color: #000; }
-      h1 { font-size: 16px; margin: 0 0 4px; }
-      .center { text-align: center; }
-      .info { margin: 8px 0; font-size: 11px; }
-      .info strong { display: inline-block; min-width: 90px; }
-      table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+      html, body { width: 100%; background: #fff; color: #000; font-family: Arial, sans-serif; font-size: 11px; margin: 0; padding: 0; }
+      .folha { max-width: 190mm; margin: 0 auto; padding: 10px; }
+      .header-title { font-size: 16px; font-weight: 900; text-align: center; margin-bottom: 10px; }
+      .info-linha { font-size: 11px; margin-bottom: 3px; font-weight: 700; }
+      .info-linha strong { display: inline-block; width: 80px; }
+      table { width: 100%; border-collapse: collapse; margin-top: 10px; }
       th, td { border: 1px solid #000; padding: 4px 5px; font-size: 10px; }
-      th { background: #eee; font-weight: 700; }
-      .tot { margin-top: 8px; font-weight: 700; text-align: right; }
-      .ass { display: flex; justify-content: space-between; margin-top: 30px; }
-      .ass div { border-top: 1px solid #000; width: 40%; text-align: center; padding-top: 4px; font-size: 11px; }
+      th { background: #eee; font-weight: 700; text-align: left; }
+      .totais { margin-top: 10px; font-weight: 900; text-align: right; font-size: 12px; }
+      .assinatura { display: flex; justify-content: space-between; margin-top: 40px; }
+      .assinatura div { border-top: 1px solid #000; width: 45%; text-align: center; padding-top: 4px; font-weight: 700; }
     </style></head><body>
-      <div class="center"><h1>🍇 FRUTAS & CIA — INVENTÁRIO</h1></div>
-      <div class="info"><strong>ID:</strong> ${escHtml(idInput.value)}</div>
-      <div class="info"><strong>Loja:</strong> ${escHtml(lojaSelect.value)}</div>
-      <div class="info"><strong>Operador:</strong> ${escHtml(operadorInput.value)}</div>
-      <div class="info"><strong>Data/Hora:</strong> ${escHtml(dataHoraInput.value)}</div>
-      ${obsInput.value.trim() ? `<div class="info"><strong>Obs:</strong> ${escHtml(obsInput.value)}</div>` : ''}
-      <table>
-        <thead><tr><th>#</th><th>SKU</th><th>Cód. Barras</th><th>Produto</th><th>Qtd</th><th>Fator</th><th>Un.</th><th>Total UN</th></tr></thead>
-        <tbody>${linhas}</tbody>
-      </table>
-      <div class="tot">Itens: ${itens.length} &nbsp; | &nbsp; Total UN: ${formatarNumero(totalUn)}</div>
-      <div class="ass"><div>Emissor</div><div>Conferente</div></div>
+      <div class="folha">
+        <div class="header-title">🍇 FRUTAS & CIA — INVENTÁRIO</div>
+        <div class="info-linha"><strong>ID:</strong> ${escHtml(idInput.value)}</div>
+        <div class="info-linha"><strong>Loja:</strong> ${escHtml(lojaSelect.value)}</div>
+        <div class="info-linha"><strong>Operador:</strong> ${escHtml(operadorInput.value)}</div>
+        <div class="info-linha"><strong>Data/Hora:</strong> ${escHtml(dataHoraInput.value)}</div>
+        ${obsInput.value.trim() ? `<div class="info-linha"><strong>Obs:</strong> ${escHtml(obsInput.value)}</div>` : ''}
+        <table>
+          <thead><tr><th style="width:5%;text-align:center;">#</th><th style="width:10%;">SKU</th><th style="width:15%;">Cód. Barras</th><th style="width:35%;">Produto</th><th style="width:8%;text-align:center;">Qtd</th><th style="width:8%;text-align:center;">Fator</th><th style="width:7%;text-align:center;">Un.</th><th style="width:12%;text-align:right;">Total UN</th></tr></thead>
+          <tbody>${linhas}</tbody>
+        </table>
+        <div class="totais">Itens: ${itens.length} &nbsp; | &nbsp; Total UN: ${formatarNumero(totalUn)}</div>
+        <div class="assinatura"><div>Emissor</div><div>Conferente</div></div>
+      </div>
     </body></html>`;
+  }
 
+  function compartilharPDF() {
+    fecharModalCompartilhar();
+    const html = gerarCupomHTML();
+    const win = window.open('', '_blank', 'width=900,height=1000');
+    if (!win) { showToast('⚠️ Permita pop-ups para salvar o PDF'); return; }
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    win.onload = () => setTimeout(() => win.print(), 400);
+  }
+
+  async function compartilharFoto() {
+    fecharModalCompartilhar();
+    if (typeof html2canvas === 'undefined') { showToast('⚠️ Biblioteca de imagem carregando...'); return; }
+    showToast('📷 Gerando imagem...');
+    const html = gerarCupomHTML();
+    
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;height:1123px;border:none;background:#fff;';
+    iframe.srcdoc = html;
+    document.body.appendChild(iframe);
+
+    try {
+      await new Promise((resolve) => { iframe.onload = resolve; setTimeout(resolve, 1500); });
+      const doc = iframe.contentDocument || iframe.contentWindow.document;
+      const alvo = doc.querySelector('.folha') || doc.body;
+      const canvas = await html2canvas(alvo, { scale: 2, backgroundColor: '#ffffff', logging: false, windowWidth: 794, windowHeight: 1123 });
+      
+      const nomeArquivo = `inventario-${idInput.value}.png`;
+      
+      canvas.toBlob(async (blob) => {
+        if (!blob) { showToast('⚠️ Erro ao gerar imagem'); return; }
+        const file = new File([blob], nomeArquivo, { type: 'image/png' });
+        
+        // Tenta usar a API nativa de compartilhamento do celular (WhatsApp, etc)
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          try { 
+            await navigator.share({ files: [file], title: 'Inventário', text: 'Compartilhando inventário' }); 
+            showToast('📷 Imagem compartilhada!'); 
+            return; 
+          } catch (err) {
+            console.log('Compartilhamento cancelado ou falhou', err);
+          }
+        }
+        
+        // Fallback: faz o download da imagem
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a'); 
+        a.href = url; 
+        a.download = nomeArquivo; 
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('📷 Imagem salva!');
+      }, 'image/png');
+    } catch (err) {
+      console.error(err);
+      showToast('⚠️ Erro ao gerar imagem: ' + err.message);
+    } finally {
+      document.body.removeChild(iframe);
+    }
+  }
+
+  async function compartilharTexto() {
+    fecharModalCompartilhar();
+    const ordenado = [...itens].sort((a, b) =>
+      a.descricao.localeCompare(b.descricao, 'pt-BR', { sensitivity: 'base' })
+    );
+    const totalUn = ordenado.reduce((s, it) => s + it.totalUnidades, 0);
+    
+    let texto = `🍇 FRUTAS & CIA — INVENTÁRIO\n`;
+    texto += `ID: ${idInput.value}\nLoja: ${lojaSelect.value}\nOperador: ${operadorInput.value}\nData/Hora: ${dataHoraInput.value}\n`;
+    if (obsInput.value.trim()) texto += `Obs: ${obsInput.value.trim()}\n`;
+    texto += `\nITENS:\n`;
+    
+    ordenado.forEach((item, i) => {
+      texto += `${i+1}. ${item.descricao} — ${formatarNumero(item.quantidade)} ${item.unidade}`;
+      if (item.fator > 1) texto += ` (Fat: ${formatarNumero(item.fator)} = ${formatarNumero(item.totalUnidades)} UN)`;
+      texto += `\n`;
+    });
+    
+    texto += `\nTotal de itens: ${itens.length}\nTotal de unidades: ${formatarNumero(totalUn)}\n`;
+
+    if (navigator.share) {
+      try { await navigator.share({ text: texto, title: 'Inventário' }); return; } catch (err) {}
+    }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(texto);
+        showToast('📝 Texto copiado!');
+      } else prompt('Copie o texto abaixo (Ctrl+C):', texto);
+    } catch (err) {
+      prompt('Copie o texto abaixo (Ctrl+C):', texto);
+    }
+  }
+
+  // ============================================================
+  // 19. Imprimir
+  // ============================================================
+  function imprimirInventario() {
+    if (!itens.length) { showToast('⚠️ Nenhum item para imprimir'); return; }
+    if (!validarHeader()) return;
+    
+    const html = gerarCupomHTML();
     const win = window.open('', '_blank', 'width=900,height=1000');
     if (!win) { showToast('⚠️ Permita pop-ups'); return; }
     win.document.write(html);
@@ -1131,15 +1272,12 @@
   // ============================================================
   (async function init() {
     await carregarCatalogo();
-
-    // restaura ou cria ID
     const restaurou = carregarDraft();
     if (!restaurou || !idInput.value) novoId();
 
     renderTudo();
-    habilitarImprimir();
+    habilitarAcoes();
     salvarDraft();
-    console.log(`✅ Inventário iniciado — ID ${idInput.value} | ${catalogo.length} produtos | ${itens.length} itens no draft`);
   })();
 </script>
 
